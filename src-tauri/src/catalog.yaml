@@ -1,0 +1,601 @@
+- schemaVersion: 1
+  id: codex
+  setupDocs: https://developers.openai.com/codex/
+  purpose: Coding agent harness
+  categories: [harness]
+  name: Codex
+  kind: harness
+  source: https://github.com/openai/codex
+  version: "0.167.1"
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: claude-code
+  setupDocs: https://code.claude.com/docs/en/quickstart
+  purpose: Coding agent harness
+  categories: [harness]
+  name: Claude Code
+  kind: harness
+  source: https://github.com/anthropics/claude-code
+  version: "2.1.322"
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: opencode
+  setupDocs: https://opencode.ai/docs/
+  purpose: Coding agent harness
+  categories: [harness]
+  name: OpenCode
+  kind: harness
+  source: https://github.com/anomalyco/opencode
+  version: "2.2.1"
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: graphify
+  setupDocs: https://github.com/Graphify-Labs/graphify
+  purpose: Builds a project graph
+  categories: [project-graph, free-tool]
+  name: Graphify
+  kind: tool
+  source: https://github.com/Graphify-Labs/graphify
+  version: unknown
+  projectTags: [graphify, "граф кода", "code graph"]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: ponytail
+  setupDocs: https://github.com/DietrichGebert/ponytail
+  purpose: Guidelines for minimal code changes
+  categories: [coding-skill, free-tool]
+  name: Ponytail
+  kind: skill
+  source: https://github.com/DietrichGebert/ponytail
+  version: unknown
+  projectTags: [ponytail, yagni, "минимум кода"]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: omniroute
+  setupDocs: https://github.com/cheaper-inference/OmniRoute
+  purpose: Routes model requests and compacts context
+  categories: [model-routing, context-compaction, free-tool]
+  name: OmniRoute
+  kind: tool
+  source: https://github.com/cheaper-inference/OmniRoute
+  version: unknown
+  projectTags: [omniroute, "model routing", "маршрутизация моделей"]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: openspec
+  setupDocs: https://github.com/Fission-AI/OpenSpec
+  purpose: Creates specifications and tasks
+  categories: [specification, free-tool]
+  name: OpenSpec
+  kind: tool
+  source: https://github.com/Fission-AI/OpenSpec
+  version: unknown
+  projectTags: [openspec, "spec-driven", "по спецификации"]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: qwen2-5-coder
+  setupDocs: https://ollama.com/library/qwen2.5-coder
+  purpose: Local coding model
+  categories: [local-model]
+  name: Qwen2.5-Coder 7B
+  kind: model
+  source: https://ollama.com/library/qwen2.5-coder
+  version: "7b"
+  requires: []
+  conflicts: []
+  harnessVersions: { claude-code: "*", opencode: "*" }
+  model: { provider: ollama, quality: 55, local: true }
+- schemaVersion: 1
+  id: gpt-4-1
+  setupDocs: https://developers.openai.com/api/docs/models/gpt-4.1
+  purpose: Cloud coding model
+  categories: [cloud-model]
+  name: GPT-4.1
+  kind: model
+  source: https://developers.openai.com/api/docs/models/gpt-4.1
+  version: gpt-4.1-2025-04-14
+  requires: []
+  conflicts: []
+  harnessVersions: { opencode: "*" }
+  model: { provider: openai, quality: 85, local: false }
+- schemaVersion: 1
+  id: herdr
+  name: Herdr
+  kind: tool
+  source: https://github.com/herdrdev/herdr
+  setupDocs: https://github.com/herdrdev/herdr
+  purpose: Terminal workspace with agent session tracking.
+  version: unknown
+  categories: [orchestration, session-management, free-tool]
+  projectTags: ["herdr", "herdr"]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: t3-code
+  name: T3 Code
+  kind: tool
+  source: https://github.com/pingdotgg/t3code
+  setupDocs: https://github.com/pingdotgg/t3code
+  purpose: Graphical interface for launching and managing agent sessions.
+  version: unknown
+  categories: [orchestration, session-management, free-tool]
+  projectTags: ["t3 code", "t3-code"]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: agent-deck
+  name: Agent Deck
+  kind: tool
+  source: https://github.com/asheshgoplani/agent-deck
+  setupDocs: https://github.com/asheshgoplani/agent-deck
+  purpose: Terminal agent session manager built on tmux.
+  version: unknown
+  categories: [orchestration, session-management, free-tool]
+  projectTags: ["agent deck", "agent-deck"]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: cmux
+  name: cmux
+  kind: tool
+  source: https://github.com/manaflow-ai/cmux
+  setupDocs: https://github.com/manaflow-ai/cmux
+  purpose: macOS terminal with tabs and agent notifications.
+  version: unknown
+  categories: [orchestration, session-management, free-tool]
+  projectTags: ["cmux", "cmux"]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: gpt-6-2-sol
+  name: GPT-6.2 Sol
+  kind: model
+  version: "gpt-6.2-sol"
+  source: https://developers.openai.com/api/docs/models/gpt-6.2-sol
+  setupDocs: https://developers.openai.com/api/docs/models/gpt-6.2-sol
+  purpose: Flagship model for coding and agent workflows
+  categories: [cloud-model, flagship-model]
+  requires: []
+  conflicts: []
+  harnessVersions: { codex: "*", opencode: "*" }
+  model: { provider: openai, quality: 96, local: false }
+- schemaVersion: 1
+  id: gpt-6-2-astra
+  name: GPT-6.2 Astra
+  kind: model
+  version: "gpt-6.2-astra"
+  source: https://developers.openai.com/api/docs/models/gpt-6.2-astra
+  setupDocs: https://developers.openai.com/api/docs/models/gpt-6.2-astra
+  purpose: Flagship model for demanding engineering tasks
+  categories: [cloud-model, flagship-model]
+  requires: []
+  conflicts: []
+  harnessVersions: { codex: "*", opencode: "*" }
+  model: { provider: openai, quality: 100, local: false }
+- schemaVersion: 1
+  id: claude-opus-5
+  name: Claude Opus 5
+  kind: model
+  version: "claude-opus-5"
+  source: https://docs.anthropic.com/en/docs/about-claude/models/overview
+  setupDocs: https://docs.anthropic.com/en/docs/about-claude/models/overview
+  purpose: Flagship model for complex coding and reasoning
+  categories: [cloud-model, flagship-model]
+  requires: []
+  conflicts: []
+  harnessVersions: { claude-code: "*", opencode: "*" }
+  model: { provider: anthropic, quality: 98, local: false }
+- schemaVersion: 1
+  id: humanizer
+  name: Humanizer
+  kind: skill
+  version: "4.0.0"
+  source: https://github.com/blader/humanizer
+  setupDocs: https://github.com/blader/humanizer
+  purpose: Edits human-facing prose for clarity and natural language
+  categories: [writing-skill, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: rtk
+  name: RTK
+  kind: tool
+  version: "unknown"
+  source: https://github.com/rtk-ai/rtk
+  setupDocs: https://github.com/rtk-ai/rtk
+  purpose: Filters verbose terminal output before it enters the agent context
+  categories: [context-optimization, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: headroom
+  name: Headroom
+  kind: tool
+  source: https://github.com/headroomlabs-ai/headroom
+  setupDocs: https://github.com/headroomlabs-ai/headroom
+  purpose: "Local compression for large tool responses, logs, and retrieved context"
+  version: unknown
+  categories: [context-optimization, complex-project, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: claude-mem
+  name: Claude-Mem
+  kind: skill
+  source: https://github.com/thedotmack/claude-mem
+  setupDocs: https://github.com/thedotmack/claude-mem
+  purpose: "Persistent cross-session memory; uses a model to summarize captured work"
+  version: unknown
+  categories: [session-memory, long-running, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: { claude-code: "*", codex: "*", opencode: "*" }
+- schemaVersion: 1
+  id: claude-code-setup
+  name: Claude Code Setup
+  kind: skill
+  source: https://github.com/anthropics/claude-plugins-official/tree/main/plugins/claude-code-setup
+  setupDocs: https://github.com/anthropics/claude-plugins-official/tree/main/plugins/claude-code-setup
+  purpose: "Recommends Claude Code hooks, skills, MCP servers, and subagents for a codebase"
+  version: unknown
+  categories: [harness-setup, official, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: { claude-code: "*" }
+- schemaVersion: 1
+  id: site-replica
+  name: Site Replica
+  kind: skill
+  source: https://github.com/jatidevelopments/site-replica-skill
+  setupDocs: https://github.com/jatidevelopments/site-replica-skill
+  purpose: "Rebuilds the design of a website the user owns or has permission to reproduce"
+  version: unknown
+  categories: [site-replication, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: { claude-code: "*" }
+- schemaVersion: 1
+  id: vercel-react-best-practices
+  name: Vercel React Best Practices
+  kind: skill
+  source: https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices
+  setupDocs: https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices
+  purpose: "Reviews React and Next.js code for performance and correctness"
+  version: unknown
+  categories: [react, nextjs, frontend, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: web-design-guidelines
+  name: Vercel Web Design Guidelines
+  kind: skill
+  source: https://github.com/vercel-labs/agent-skills/tree/main/skills/web-design-guidelines
+  setupDocs: https://github.com/vercel-labs/agent-skills/tree/main/skills/web-design-guidelines
+  purpose: "Reviews web interfaces for accessibility and usability"
+  version: unknown
+  categories: [frontend, accessibility, design-review, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: webapp-testing
+  name: Anthropic Web App Testing
+  kind: skill
+  source: https://github.com/anthropics/skills/tree/main/skills/webapp-testing
+  setupDocs: https://github.com/anthropics/skills/tree/main/skills/webapp-testing
+  purpose: "Tests local web applications with Playwright"
+  version: unknown
+  categories: [web-testing, playwright, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: docker
+  name: Docker Engine
+  kind: tool
+  version: unknown
+  source: https://docs.docker.com/engine/
+  setupDocs: https://docs.docker.com/engine/
+  purpose: Builds and runs containers with the open-source Docker Engine
+  categories: [infrastructure, containers, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: docker-compose
+  name: Docker Compose
+  kind: tool
+  version: unknown
+  source: https://docs.docker.com/compose/
+  setupDocs: https://docs.docker.com/compose/
+  purpose: Runs a multi-container application from a Compose file
+  categories: [infrastructure, local-development, free-tool]
+  requires: [docker]
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: nginx
+  name: Nginx
+  kind: tool
+  version: unknown
+  source: https://nginx.org/en/docs/
+  setupDocs: https://nginx.org/en/docs/
+  purpose: Serves static files and acts as a reverse proxy
+  categories: [infrastructure, reverse-proxy, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: postgresql
+  name: PostgreSQL
+  kind: tool
+  version: unknown
+  source: https://www.postgresql.org/docs/
+  setupDocs: https://www.postgresql.org/docs/
+  purpose: Provides persistent relational storage
+  categories: [infrastructure, database, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: typescript
+  name: "TypeScript"
+  kind: tool
+  version: unknown
+  source: https://www.typescriptlang.org/docs/
+  setupDocs: https://www.typescriptlang.org/docs/
+  purpose: Typed language for JavaScript runtimes and frontend applications
+  categories: [infrastructure, programming-language, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: javascript
+  name: "JavaScript"
+  kind: tool
+  version: unknown
+  source: https://developer.mozilla.org/en-US/docs/Web/JavaScript
+  setupDocs: https://developer.mozilla.org/en-US/docs/Web/JavaScript
+  purpose: Language for browsers and JavaScript runtimes
+  categories: [infrastructure, programming-language, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: python
+  name: "Python"
+  kind: tool
+  version: unknown
+  source: https://docs.python.org/3/
+  setupDocs: https://docs.python.org/3/
+  purpose: Language for web services, automation, and data workloads
+  categories: [infrastructure, programming-language, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: go
+  name: "Go"
+  kind: tool
+  version: unknown
+  source: https://go.dev/doc/
+  setupDocs: https://go.dev/doc/
+  purpose: Compiled language for services and command-line tools
+  categories: [infrastructure, programming-language, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: rust
+  name: "Rust"
+  kind: tool
+  version: unknown
+  source: https://doc.rust-lang.org/
+  setupDocs: https://doc.rust-lang.org/
+  purpose: Compiled language for systems software, native applications, and command-line tools
+  categories: [infrastructure, programming-language, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: java
+  name: "Java"
+  kind: tool
+  version: unknown
+  source: https://dev.java/learn/
+  setupDocs: https://dev.java/learn/
+  purpose: Language for JVM applications and services
+  categories: [infrastructure, programming-language, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: csharp
+  name: "C#"
+  kind: tool
+  version: unknown
+  source: https://learn.microsoft.com/en-us/dotnet/csharp/
+  setupDocs: https://learn.microsoft.com/en-us/dotnet/csharp/
+  purpose: Language for .NET applications and services
+  categories: [infrastructure, programming-language, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: php
+  name: "PHP"
+  kind: tool
+  version: unknown
+  source: https://www.php.net/docs.php
+  setupDocs: https://www.php.net/docs.php
+  purpose: Language for web applications and server-side rendering
+  categories: [infrastructure, programming-language, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: ruby
+  name: "Ruby"
+  kind: tool
+  version: unknown
+  source: https://www.ruby-lang.org/en/documentation/
+  setupDocs: https://www.ruby-lang.org/en/documentation/
+  purpose: Language for Ruby applications and scripting
+  categories: [infrastructure, programming-language, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: git
+  name: Git
+  kind: tool
+  version: unknown
+  source: https://git-scm.com/doc
+  setupDocs: https://git-scm.com/doc
+  purpose: Version control for source code
+  categories: [infrastructure, version-control, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: nodejs
+  name: Node.js
+  kind: tool
+  version: unknown
+  source: https://nodejs.org/en/learn
+  setupDocs: https://nodejs.org/en/learn
+  purpose: JavaScript runtime for development tooling and applications
+  categories: [infrastructure, runtime, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: npm
+  name: npm
+  kind: tool
+  version: unknown
+  source: https://docs.npmjs.com/
+  setupDocs: https://docs.npmjs.com/
+  purpose: Installs Node.js dependencies and runs package scripts
+  categories: [infrastructure, package-manager, free-tool]
+  requires: [nodejs]
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: pnpm
+  name: pnpm
+  kind: tool
+  version: unknown
+  source: https://pnpm.io/
+  setupDocs: https://pnpm.io/
+  purpose: Node.js package manager with workspace support
+  categories: [infrastructure, package-manager, free-tool]
+  requires: [nodejs]
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: yarn
+  name: Yarn
+  kind: tool
+  version: unknown
+  source: https://yarnpkg.com/
+  setupDocs: https://yarnpkg.com/
+  purpose: Node.js dependency and workspace management
+  categories: [infrastructure, package-manager, free-tool]
+  requires: [nodejs]
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: bun
+  name: Bun
+  kind: tool
+  version: unknown
+  source: https://bun.com/docs
+  setupDocs: https://bun.com/docs
+  purpose: JavaScript and TypeScript runtime and package manager
+  categories: [infrastructure, runtime, package-manager, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: deno
+  name: Deno
+  kind: tool
+  version: unknown
+  source: https://docs.deno.com/runtime/
+  setupDocs: https://docs.deno.com/runtime/
+  purpose: JavaScript and TypeScript runtime with dependency management
+  categories: [infrastructure, runtime, package-manager, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: vite
+  name: Vite
+  kind: tool
+  version: unknown
+  source: https://vite.dev/guide/
+  setupDocs: https://vite.dev/guide/
+  purpose: Development server and production build tool for web applications
+  categories: [infrastructure, build-tool, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: react
+  name: React
+  kind: tool
+  version: unknown
+  source: https://react.dev/learn
+  setupDocs: https://react.dev/learn
+  purpose: UI library for building interactive web interfaces
+  categories: [infrastructure, framework, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: nextjs
+  name: Next.js
+  kind: tool
+  version: unknown
+  source: https://nextjs.org/docs
+  setupDocs: https://nextjs.org/docs
+  purpose: React framework with routing and application build tooling
+  categories: [infrastructure, framework, free-tool]
+  requires: [react]
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: vue
+  name: Vue
+  kind: tool
+  version: unknown
+  source: https://vuejs.org/guide/introduction.html
+  setupDocs: https://vuejs.org/guide/introduction.html
+  purpose: Progressive UI framework for web applications
+  categories: [infrastructure, framework, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}

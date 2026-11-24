@@ -1,0 +1,60 @@
+{
+  "priorities": {
+    "humanizer": {
+      "planning": "Include for documentation, public-facing copy, interface text, and release notes. Preserve technical terms, facts, code, and structured data.",
+      "instructions": "Use when writing or revising public-facing copy, interface text, articles or documentation. Preserve meaning, facts and technical terms. Skip code-only changes."
+    },
+    "rtk": {
+      "planning": "Prefer for verbose command output in routine terminal-based coding."
+    },
+    "ponytail": {
+      "planning": "Prefer for focused changes, maintenance, and scope control when it fits the project.",
+      "refinementLabel": "Ponytail (small code changes)"
+    },
+    "headroom": {
+      "planning": "Prefer when compatible and long sessions, large tool responses, heavy retrieval, multiple services, or substantial logs are likely. Use its local compression."
+    },
+    "graphify": {
+      "planning": "Prefer when the agent needs to navigate a substantial existing repository or understand dependencies.",
+      "refinementLabel": "Graphify (code graph)"
+    },
+    "omniroute": {
+      "planning": "Use only when model routing or a self-hosted gateway is useful.",
+      "refinementLabel": "OmniRoute (model routing)"
+    },
+    "claude-mem": {
+      "planning": "Consider for cross-session memory in long-lived or resumed projects when its supported integration works with an available model. Explain model consumption and skip when setup requires a new paid service."
+    },
+    "claude-code-setup": {
+      "planning": "Prefer for first-time Claude Code configuration or projects that benefit from tailored Claude Code automation."
+    },
+    "web-design-guidelines": {
+      "planning": "Prefer for web interface work."
+    },
+    "vercel-react-best-practices": {
+      "planning": "Prefer for React or Next.js projects."
+    },
+    "webapp-testing": {
+      "planning": "Prefer when browser-level verification matters."
+    },
+    "site-replica": {
+      "planning": "Use only when the user explicitly requests rebuilding a site they own or have permission to reproduce and the workflow is compatible."
+    },
+    "openspec": {
+      "refinementLabel": "OpenSpec (specification workflow)"
+    }
+  },
+  "excludedDiscoveredSkills": {
+    "anthropics/skills": [
+      "webapp-testing",
+      "docx",
+      "pptx",
+      "pdf",
+      "xlsx"
+    ],
+    "vercel-labs/agent-skills": [
+      "web-design-guidelines",
+      "react-best-practices"
+    ]
+  }
+}

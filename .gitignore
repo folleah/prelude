@@ -1,0 +1,23 @@
+# Node.js and Vite
+/node_modules/
+/dist/
+/dist-ssr/
+*.tsbuildinfo
+npm-debug.log*
+
+# Rust and Tauri build output
+/target/
+/src-tauri/target/
+/src-tauri/target-canvas/
+/src-tauri/gen/schemas/
+/.cargo-cache/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# OS metadata
+.DS_Store
+Thumbs.db

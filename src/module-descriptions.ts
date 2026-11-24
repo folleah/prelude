@@ -1,0 +1,61 @@
+import { language } from './i18n'
+
+const russianDescriptions = new Map<string, string>([
+  ["Coding agent harness", "Среда запуска агента для разработки"],
+  ["Builds a project graph", "Строит граф проекта"],
+  ["Guidelines for minimal code changes", "Помогает вносить небольшие изменения в код"],
+  ["Routes model requests and compacts context", "Маршрутизирует запросы к моделям и сжимает контекст"],
+  ["Creates specifications and tasks", "Создаёт спецификации и задачи"],
+  ["Local coding model", "Локальная модель для работы с кодом"],
+  ["Cloud coding model", "Облачная модель для работы с кодом"],
+  ["Terminal workspace with agent session tracking.", "Терминальная рабочая область с отслеживанием сессий агентов"],
+  ["Graphical interface for launching and managing agent sessions.", "Графический интерфейс для запуска и управления сессиями агентов"],
+  ["Terminal agent session manager built on tmux.", "Управляет сессиями агентов в терминале на базе tmux"],
+  ["macOS terminal with tabs and agent notifications.", "Терминал для macOS с вкладками и уведомлениями агентов"],
+  ["Flagship model for coding and agent workflows", "Модель для разработки и работы с агентами"],
+  ["Flagship model for demanding engineering tasks", "Модель для сложных инженерных задач"],
+  ["Flagship model for complex coding and reasoning", "Модель для сложного программирования и рассуждений"],
+  ["Edits human-facing prose for clarity and natural language", "Редактирует тексты для читателей, делая их яснее и естественнее"],
+  ["Filters verbose terminal output before it enters the agent context", "Сокращает подробный вывод терминала перед передачей агенту"],
+  ["Local compression for large tool responses, logs, and retrieved context", "Локально сжимает большие ответы инструментов, журналы и найденный контекст"],
+  ["Persistent cross-session memory; uses a model to summarize captured work", "Хранит память между сессиями и использует модель для краткого пересказа выполненной работы"],
+  ["Recommends Claude Code hooks, skills, MCP servers, and subagents for a codebase", "Рекомендует хуки, скиллы, MCP-серверы и подагентов Claude Code для проекта"],
+  ["Rebuilds the design of a website the user owns or has permission to reproduce", "Воссоздаёт дизайн сайта, если пользователь владеет им или вправе его воспроизвести"],
+  ["Reviews React and Next.js code for performance and correctness", "Проверяет код React и Next.js на корректность и производительность"],
+  ["Reviews web interfaces for accessibility and usability", "Проверяет доступность и удобство веб-интерфейсов"],
+  ["Tests local web applications with Playwright", "Тестирует локальные веб-приложения через Playwright"],
+  ["Builds and runs containers with the open-source Docker Engine", "Собирает и запускает контейнеры с Docker Engine"],
+  ["Runs a multi-container application from a Compose file", "Запускает приложение из нескольких контейнеров по файлу Compose"],
+  ["Serves static files and acts as a reverse proxy", "Раздаёт статические файлы и работает как обратный прокси"],
+  ["Provides persistent relational storage", "Обеспечивает постоянное хранение реляционных данных"],
+  ["Typed language for JavaScript runtimes and frontend applications", "Типизированный язык для сред JavaScript и веб-интерфейсов"],
+  ["Language for browsers and JavaScript runtimes", "Язык для браузеров и сред выполнения JavaScript"],
+  ["Language for web services, automation, and data workloads", "Язык для веб-сервисов, автоматизации и обработки данных"],
+  ["Compiled language for services and command-line tools", "Компилируемый язык для сервисов и инструментов командной строки"],
+  ["Compiled language for systems software, native applications, and command-line tools", "Компилируемый язык для системного ПО, нативных приложений и инструментов командной строки"],
+  ["Language for JVM applications and services", "Язык для приложений и сервисов на JVM"],
+  ["Language for .NET applications and services", "Язык для приложений и сервисов .NET"],
+  ["Language for web applications and server-side rendering", "Язык для веб-приложений и серверного рендеринга"],
+  ["Language for Ruby applications and scripting", "Язык для приложений и скриптов на Ruby"],
+  ["Version control for source code", "Управляет версиями исходного кода"],
+  ["JavaScript runtime for development tooling and applications", "Среда выполнения JavaScript для инструментов разработки и приложений"],
+  ["Installs Node.js dependencies and runs package scripts", "Устанавливает зависимости Node.js и запускает скрипты проекта"],
+  ["Node.js package manager with workspace support", "Менеджер пакетов Node.js с поддержкой рабочих пространств"],
+  ["Node.js dependency and workspace management", "Управляет зависимостями Node.js и рабочими пространствами"],
+  ["JavaScript and TypeScript runtime and package manager", "Среда выполнения и менеджер пакетов для JavaScript и TypeScript"],
+  ["JavaScript and TypeScript runtime with dependency management", "Среда выполнения JavaScript и TypeScript с управлением зависимостями"],
+  ["Development server and production build tool for web applications", "Сервер разработки и инструмент сборки веб-приложений"],
+  ["UI library for building interactive web interfaces", "Библиотека для интерактивных веб-интерфейсов"],
+  ["React framework with routing and application build tooling", "Фреймворк React с маршрутизацией и инструментами сборки"],
+  ["Progressive UI framework for web applications", "Фреймворк для веб-интерфейсов"],
+  ["Existing local skill. Its files stay in the project directory.", "Локальный скилл, найденный в проекте."],
+  ["Detected in the project directory.", "Найдено в папке проекта."],
+])
+
+export function moduleDescription(text: string, locale = language.value): string | undefined {
+  if (locale === 'ru') return russianDescriptions.get(text)
+  for (const [english, russian] of russianDescriptions) {
+    if (russian === text) return english
+  }
+  return russianDescriptions.has(text) ? text : undefined
+}

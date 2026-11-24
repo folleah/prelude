@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+:root { color-scheme: light; }
+* { cursor: default; }
+button, button * { cursor: pointer; }
+
+input:is([type="text"], [type="search"], [type="url"], [type="password"], [type="number"]),
+input:not([type]), textarea { cursor: text; }
+textarea { resize: none; }
+
+:root {
+  --text-strong: #202124;
+  --text-medium: #3f4146;
+  --text-muted: #5f6268;
+  --surface-panel: #fafafa;
+  --surface-soft: #f4f4f5;
+  --surface-canvas: #ededee;
+  --surface-hover: #eeeeef;
+  --surface-selected: #e9e9eb;
+  --border-subtle: #e7e7e9;
+  --border: #dedee1;
+  --border-strong: #c6c7cc;
+  --canvas-dot: rgb(82 85 94 / 12%);
+  --selection-border: #646770;
+  --button-fill: #33353a;
+  --button-hover: #232429;
+}
