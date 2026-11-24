@@ -97,6 +97,20 @@ pub struct Plan {
     pub components: Vec<Selection>,
     pub roles: Vec<Role>,
     pub instructions: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dependencies: Vec<ProjectDependency>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProjectDependency {
+    pub ecosystem: String,
+    pub package: String,
+    pub reason: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manifest: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

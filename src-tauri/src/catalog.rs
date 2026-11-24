@@ -131,6 +131,8 @@ fn detect_installed(directories: &[PathBuf]) -> Vec<&'static str> {
         ("agent-deck", "agent-deck"),
         ("cmux", "cmux"),
         ("rtk", "rtk"),
+        ("ast-grep", "ast-grep"),
+        ("repomix", "repomix"),
         ("headroom", "headroom"),
         ("openspec", "openspec"),
         ("docker", "docker"),

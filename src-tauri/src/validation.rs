@@ -16,12 +16,43 @@ pub fn validate_plan(plan: Plan, extension_paths: Vec<PathBuf>) -> Result<Vec<St
     Ok(issues)
 }
 
+pub(crate) fn valid_dependency_name(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 214
+        && value.split(['/', ':']).all(|segment| {
+            !matches!(segment, "" | "." | "..")
+                && segment
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || b"@._-".contains(&byte))
+        })
+}
+
 pub(crate) fn check(plan: &Plan, entries: &[RegistryEntry]) -> Vec<String> {
     let catalog: BTreeMap<_, _> = entries
         .iter()
         .map(|entry| (entry.id.as_str(), entry))
         .collect();
     let mut issues = Vec::new();
+    let mut dependencies = BTreeSet::new();
+    for dependency in &plan.dependencies {
+        if !valid_dependency_name(&dependency.ecosystem)
+            || !valid_dependency_name(&dependency.package)
+            || dependency.reason.trim().is_empty()
+            || dependency.reason.len() > 1024
+            || dependency
+                .source
+                .as_deref()
+                .is_some_and(|source| crate::delivery::public_url(source).is_err())
+        {
+            issues.push("Use a package ID, an ecosystem, a short purpose, and an optional public HTTPS source for each project dependency.".into());
+        }
+        if !dependencies.insert((&dependency.ecosystem, &dependency.package)) {
+            issues.push(format!(
+                "Remove the duplicate project dependency {}.",
+                dependency.package
+            ));
+        }
+    }
     let mut ids = BTreeSet::new();
     let harness = catalog
         .get(plan.harness.id.as_str())

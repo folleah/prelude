@@ -225,6 +225,7 @@ pub fn recommend(
         plan: Plan {
             harness: selection(harness, "Supports the available configuration and suitable project components."),
             components,
+            dependencies: Vec::new(),
             roles: vec![Role {
                 model_id: None,
                 parallel_with: Vec::new(),

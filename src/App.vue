@@ -5,6 +5,8 @@ import { ArrowLeft, FileText, Folder, LoaderCircle, LogOut, MessageSquare, Setti
 import { invoke } from '@tauri-apps/api/core'
 import { computed, nextTick, onMounted, ref, toRaw, watch } from 'vue'
 import PlanBuilder from './PlanBuilder.vue'
+import type { DeclaredDependency, ProjectDependency } from './project-dependency'
+import type { HookCheck, PlannedHook } from './planned-hook'
 
 const idea = ref('')
 const projectDescription = ref('')
@@ -14,10 +16,14 @@ const discovery = ref<Discovery>()
 const projectTitle = ref('')
 const error = ref('')
 type Selection = { id: string, version: string, reason: string }
-type HookCheck = 'test' | 'lint' | 'typecheck'
-const hookChecks = ref<HookCheck[]>([])
+const hookChecks = ref<PlannedHook[]>([])
 type Role = { name: string, responsibility: string, interaction: string, reason: string, modelId?: string, parallelWith?: string[] }
-type Plan = { harness: Selection, components: Selection[], roles: Role[], instructions: string[] }
+type Plan = { harness: Selection, components: Selection[], roles: Role[], instructions: string[], dependencies?: ProjectDependency[] }
+type GenerationInput = { prompt: string, answers: [string, string][], useDefaults: boolean, basePlan?: Plan }
+const generationInput = ref<GenerationInput>()
+function emptyPlan(): Plan {
+  return { harness: { id: '', version: '', reason: '' }, components: [], roles: [], instructions: [] }
+}
 type Recommendation = {
   plan: Plan
   notes: string[]
@@ -38,12 +44,14 @@ const promptDialog = ref<HTMLDialogElement>()
 const analyzedProject = ref(false)
 const projectSources = ref<ProjectSource[]>([])
 const projectTechnologies = ref<string[]>([])
+const declaredDependencies = ref<DeclaredDependency[]>([])
 const detectedIds = ref<string[]>([])
 
 function clearAnalysisContext() {
   analyzedProject.value = false
   projectSources.value = []
   projectTechnologies.value = []
+  declaredDependencies.value = []
   detectedIds.value = []
 }
 
@@ -69,7 +77,7 @@ function initializeProject() {
   clearAnalysisContext()
   loadProject({
     schemaVersion: 1, description: '', assumptions: [],
-    plan: { harness: { id: '', version: '', reason: '' }, components: [], roles: [], instructions: [] },
+    plan: emptyPlan(),
   })
   workspaceStatus.value = ''
   error.value = ''
@@ -78,18 +86,19 @@ function initializeProject() {
 type ProjectYaml = {
   schemaVersion: number, title?: string, description: string, plan: Plan, assumptions: string[],
   localSkills?: string[], messages?: ChatMessage[], discovery?: Discovery, deliveryMode?: 'create' | 'apply',
-  hookChecks?: HookCheck[],
+  hookChecks?: (HookCheck | PlannedHook)[],
+  generationInput?: GenerationInput,
 }
 type ProjectSource = { path: string, scope: string, content: string }
 type OpenedProject = {
   workspace: ProjectYaml | null, plan: Plan, notes: string[], localSkills: string[],
-  sources: ProjectSource[], technologies: string[], detectedIds: string[],
+  sources: ProjectSource[], technologies: string[], detectedIds: string[], dependencies: DeclaredDependency[],
 }
 const workspaceStatus = ref('')
 const historyPrefix = 'prelude.draft-history.v1.'
 type HistoryDraft = {
   id: string, name: string, updated: number, project: ProjectYaml, draft: string, paths: string[],
-  analysis?: { sources: ProjectSource[], technologies: string[], detectedIds: string[] },
+  analysis?: { sources: ProjectSource[], technologies: string[], detectedIds: string[], dependencies?: DeclaredDependency[] },
   instructions?: InstructionPreview,
   exports?: Partial<Record<ExportTarget, AgentExport>>,
 }
@@ -115,7 +124,7 @@ function openHistory(saved: HistoryDraft) {
   const item = structuredClone(toRaw(saved))
   activeHistoryId.value = item.id
   clearAnalysisContext()
-  loadProject(item.project, item.name)
+  loadProject(item.project)
   idea.value = item.draft
   planCatalogPaths = [...item.paths]
   builderPaths.value = [...item.paths]
@@ -123,6 +132,7 @@ function openHistory(saved: HistoryDraft) {
     analyzedProject.value = true
     projectSources.value = item.analysis.sources
     projectTechnologies.value = [...item.analysis.technologies]
+    declaredDependencies.value = item.analysis.dependencies ?? []
     detectedIds.value = [...item.analysis.detectedIds]
   }
   generatedInstructions.value = item.instructions
@@ -149,15 +159,24 @@ function snapshotProject(): ProjectYaml {
     hookChecks: [...hookChecks.value],
     messages: messages.value.map(message => ({ ...message })),
     discovery: discovery.value && { ...discovery.value, questions: [...discovery.value.questions], answers: [...discovery.value.answers] },
+    generationInput: generationInput.value,
   }
 }
 
-function loadProject(snapshot: ProjectYaml, fallbackTitle = snapshot.description.slice(0, 56)) {
-  projectTitle.value = snapshot.title ?? fallbackTitle
+function loadProject(snapshot: ProjectYaml) {
+  const title = snapshot.title?.trim() ?? ''
+  const firstPrompt = snapshot.messages?.find(message => message.role === 'user')?.text
+  const clippedPrompt = [snapshot.description, firstPrompt].some(text => {
+    const normalized = text?.trim().replace(/\s+/g, ' ') ?? ''
+    return (normalized.length > 56 && title === normalized.slice(0, 56)) || (title.endsWith('?') && title === normalized)
+  })
+  projectTitle.value = clippedPrompt ? '' : title
   localSkills.value = snapshot.localSkills ?? []
-  hookChecks.value = snapshot.hookChecks ?? []
+  hookChecks.value = snapshot.hookChecks?.map(hook =>
+    typeof hook === 'string' ? { check: hook, title: '', description: '' } : hook) ?? []
   projectDescription.value = snapshot.discovery ? '' : snapshot.description
   discovery.value = snapshot.discovery
+  generationInput.value = snapshot.generationInput
   planCatalogPaths = []
   builderPaths.value = []
   idea.value = ''
@@ -178,13 +197,14 @@ async function openExistingProject() {
     const opened = await invoke<OpenedProject>('open_project_directory', { repository: directory, extensionPaths: [] })
     initializeProject()
     loadProject({
-      schemaVersion: 1, description: opened.workspace?.description ?? '',
+      schemaVersion: 1, title: opened.workspace?.title, description: opened.workspace?.description ?? '',
       plan: opened.plan, assumptions: opened.notes, localSkills: opened.localSkills,
       messages: [{ role: 'assistant', text: [t('Project directory analyzed.'), ...opened.notes].join('\n') }],
     })
     analyzedProject.value = true
     projectSources.value = opened.sources
     projectTechnologies.value = opened.technologies
+    declaredDependencies.value = opened.dependencies
     detectedIds.value = opened.detectedIds
   } catch (cause) {
     workspaceStatus.value = String(cause)
@@ -215,7 +235,7 @@ async function openYaml(event: Event) {
     if (file.size > 1024 * 1024) throw new Error(t('The project YAML exceeds 1 MiB.'))
     const snapshot = await invoke<ProjectYaml>('decode_project_yaml', { yaml: await file.text() })
     const current = JSON.parse(planText.value) as Plan
-    const hasConfiguration = current.harness.id || current.components.length || current.roles.length || current.instructions.length || localSkills.value.length
+    const hasConfiguration = current.harness.id || current.components.length || current.roles.length || current.instructions.length || current.dependencies?.length || localSkills.value.length
     if (hasConfiguration && !window.confirm(t('Replace the current configuration?'))) return
     loadProject(snapshot)
     clearAnalysisContext()
@@ -227,7 +247,7 @@ async function openYaml(event: Event) {
 }
 type InstructionPreview = { path: string, content: string }
 type ExportTarget = 'codex' | 'claude-code' | 'opencode'
-type AgentExport = { files: Record<string, string>, omitted: string[], skillErrors?: string[] }
+type AgentExport = { files: Record<string, string>, omitted: string[], skillErrors?: string[], roleLayoutVersion?: number }
 const exportTargets = [
   { id: 'codex', name: 'OpenAI Codex' },
   { id: 'claude-code', name: 'Claude Code' },
@@ -294,13 +314,12 @@ watch(() => {
   if (screen.value !== 'builder' || !id || !project.value || !planText.value) return
   const snapshot = snapshotProject()
   if (!snapshot.description.trim() && !snapshot.messages?.length && !analyzedProject.value && !snapshot.plan.harness.id
-    && !snapshot.plan.components.length && !snapshot.plan.roles.length && !snapshot.plan.instructions.length) return
-  const firstPrompt = snapshot.messages?.find(message => message.role === 'user')?.text
-  const name = snapshot.title || (snapshot.description || firstPrompt || '').trim().replace(/\s+/g, ' ').slice(0, 56) || t('Project instructions')
+    && !snapshot.plan.components.length && !snapshot.plan.roles.length && !snapshot.plan.instructions.length && !snapshot.plan.dependencies?.length) return
+  const name = snapshot.title || t('Untitled project')
   return JSON.stringify({
     id, name, project: snapshot, draft: idea.value, paths: builderPaths.value,
     analysis: analyzedProject.value ? {
-      sources: projectSources.value, technologies: projectTechnologies.value, detectedIds: detectedIds.value,
+      sources: projectSources.value, technologies: projectTechnologies.value, detectedIds: detectedIds.value, dependencies: declaredDependencies.value,
     } : undefined,
     instructions: generatedInstructions.value,
     exports: exportDrafts.value,
@@ -342,22 +361,34 @@ async function loadExport() {
   exportStatus.value = ''
   selectedExportPath.value = ''
   const target = exportTarget.value
+  const instructionsPath = target === 'claude-code' ? 'CLAUDE.md' : 'AGENTS.md'
   deliveryBusy.value = true
   try {
     const draft = exportDrafts.value[target]
-    if (!draft?.skillErrors || draft.skillErrors.length) {
-      const workspace = snapshotProject()
+    const workspace = snapshotProject()
+    const updateRoleLayout = Boolean(draft && draft.roleLayoutVersion !== 2 && workspace.plan.roles.length > 1)
+    if (!draft?.skillErrors || draft.skillErrors.length || updateRoleLayout) {
       const result = await invoke<AgentExport>('prepare_agent_export', {
         workspace, extensionPaths: builderPaths.value, target, projectSources: projectSources.value,
       })
       if (draft) {
         for (const path of Object.keys(result.files)) {
-          if (path in draft.files) result.files[path] = draft.files[path]
+          if (!(path in draft.files)) continue
+          if (updateRoleLayout && path === instructionsPath) {
+            const section = /^## Roles[ \t]*\r?\n[\s\S]*?(?=^## |$(?![\s\S]))/m
+            const roles = result.files[path].match(section)?.[0]
+            if (roles) {
+              const previous = draft.files[path]
+              result.files[path] = section.test(previous) ? previous.replace(section, () => roles) : previous.trimEnd() + '\n\n' + roles
+            }
+          } else {
+            result.files[path] = draft.files[path]
+          }
         }
       }
       exportDrafts.value[target] = result
     }
-    selectedExportPath.value = target === 'claude-code' ? 'CLAUDE.md' : 'AGENTS.md'
+    selectedExportPath.value = instructionsPath
   } catch (cause) {
     exportError.value = String(cause)
   } finally {
@@ -440,6 +471,7 @@ const chatgptStatus = ref('')
 const chatgptBusy = ref(false)
 const messages = ref<ChatMessage[]>([])
 const chatLog = ref<HTMLElement>()
+const chatInput = ref<HTMLTextAreaElement>()
 watch([() => messages.value.length, inspecting], () => {
   if (chatLog.value) chatLog.value.scrollTop = chatLog.value.scrollHeight
 }, { flush: 'post' })
@@ -778,6 +810,7 @@ watch(planText, (text, _, onCleanup) => {
 const canRequestPlan = computed(() => !inspecting.value && !loadingModels.value && !deliveryBusy.value
   && modelOptions.value.some(model => model.id === chatModel.value))
 const canSendPrompt = computed(() => canRequestPlan.value && Boolean(idea.value.trim()))
+const canRefreshStructure = computed(() => canRequestPlan.value && !discovery.value && Boolean(projectDescription.value.trim()))
 
 function asksForDiscoveryDefaults(text: string) {
   const normalized = text.toLowerCase().replace(/[.!?…]+$/u, '').trim()
@@ -787,23 +820,30 @@ function asksForDiscoveryDefaults(text: string) {
 function handlePromptEnter(event: KeyboardEvent) {
   if (event.isComposing || event.keyCode === 229 || event.ctrlKey || event.metaKey) return
   event.preventDefault()
+  const textarea = event.currentTarget as HTMLTextAreaElement
   if (event.shiftKey || event.altKey) {
-    const textarea = event.currentTarget as HTMLTextAreaElement
     textarea.setRangeText('\n', textarea.selectionStart, textarea.selectionEnd, 'end')
-    idea.value = textarea.value
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
   } else if (!event.repeat) {
-    void inspectProject()
+    textarea.form?.requestSubmit()
   }
 }
 
-async function inspectProject(useDefaults = false) {
-  if (!canRequestPlan.value || (!useDefaults && !canSendPrompt.value)) return
+async function inspectProject(mode: 'chat' | 'defaults' | 'refresh' = 'chat') {
+  const refresh = mode === 'refresh'
+  if (!canRequestPlan.value || (mode === 'chat' && !canSendPrompt.value) || (refresh && !canRefreshStructure.value)) return
   const submitted = idea.value
   const interview = discovery.value
-  const draft = useDefaults ? t('Choose defaults') : submitted.trim()
-  const skipDiscovery = useDefaults || asksForDiscoveryDefaults(draft)
-  if (draft) messages.value.push({ role: 'user', text: draft })
-  idea.value = ''
+  const seed = refresh ? generationInput.value : undefined
+  const previousPrompt = refresh ? messages.value.find(message => message.role === 'user')?.text : undefined
+  const draft = refresh
+    ? seed?.prompt || previousPrompt || projectDescription.value
+    : mode === 'defaults' ? t('Choose defaults') : submitted.trim()
+  const skipDiscovery = refresh ? seed?.useDefaults ?? true : mode === 'defaults' || asksForDiscoveryDefaults(draft)
+  if (!refresh) {
+    if (draft) messages.value.push({ role: 'user', text: draft })
+    idea.value = ''
+  }
   error.value = ''
   inspecting.value = true
   try {
@@ -816,13 +856,18 @@ async function inspectProject(useDefaults = false) {
       budget: { amount: 0, currency: 'USD', periodDays: 30 },
       priority: 50,
     }
-    const description = interview?.description || projectDescription.value || draft
+    const firstAnalyzedRequest = analyzedProject.value && !generationInput.value
+    const description = seed?.prompt || interview?.description || (firstAnalyzedRequest
+      ? [projectDescription.value, draft].filter(Boolean).join('\n\n')
+      : projectDescription.value || draft)
     const answers = interview ? [...interview.answers, ...(skipDiscovery ? [] : [draft])] : []
     const answeredQuestions = interview?.questions.slice(0, answers.length) ?? []
-    const discoveryAnswers = answeredQuestions.map((question, index) => [question, answers[index]])
-    if (!skipDiscovery && (interview || (!projectDescription.value && !analyzedProject.value))) {
+    const discoveryAnswers = seed?.answers ?? answeredQuestions.map((question, index): [string, string] => [question, answers[index]])
+    if (!refresh && !skipDiscovery && (interview || firstAnalyzedRequest || !projectDescription.value)) {
       const questions = await invoke<string[]>('discover_project', {
         profile: { ...profile, idea: description }, chatgptModel: chatgptModelId, acpProvider: acpProvider.value, discoveryAnswers,
+        projectDependencies: analyzedProject.value ? declaredDependencies.value : null,
+        projectTechnologies: analyzedProject.value ? projectTechnologies.value : null,
       })
       if (questions.length) {
         discovery.value = { description, questions: [...answeredQuestions, questions[0]], answers }
@@ -831,14 +876,19 @@ async function inspectProject(useDefaults = false) {
       }
     }
     const basePlan = planText.value
-    const result = await invoke<{ candidate: { plan: Plan, assumptions: string[] }, projectBrief?: string | null, hookChecks?: HookCheck[] | null }>('request_plan', {
-      current: { plan: JSON.parse(basePlan), assumptions: project.value?.notes ?? [] },
+    const currentPlan = refresh ? seed?.basePlan ?? emptyPlan() : JSON.parse(basePlan) as Plan
+    const captureInput = !refresh && !generationInput.value
+      && (analyzedProject.value || !currentPlan.harness.id)
+    const result = await invoke<{ candidate: { plan: Plan, assumptions: string[] }, projectBrief?: string | null, sessionTitle?: string | null, hookChecks?: PlannedHook[] | null }>('request_plan', {
+      current: { plan: currentPlan, assumptions: refresh ? [] : project.value?.notes ?? [] },
       request: draft,
-      currentHookChecks: hookChecks.value,
+      currentSessionTitle: projectTitle.value || null,
+      currentHookChecks: refresh ? [] : hookChecks.value,
       discoveryAnswers,
       useDiscoveryDefaults: skipDiscovery,
       projectSources: analyzedProject.value ? projectSources.value : null,
       projectTechnologies: analyzedProject.value ? projectTechnologies.value : null,
+      projectDependencies: analyzedProject.value ? declaredDependencies.value : null,
       interfaceLanguage: language.value,
       extensionPaths: paths,
       confirmed: true,
@@ -849,8 +899,17 @@ async function inspectProject(useDefaults = false) {
     catalogRevision.value++
     if (planText.value !== basePlan) throw new Error(t('The builder changed while the request was running. Send it again to apply changes to the latest plan.'))
     const updated = Boolean(projectDescription.value) || analyzedProject.value
+    if (captureInput) {
+      generationInput.value = {
+        prompt: description,
+        answers: discoveryAnswers,
+        useDefaults: skipDiscovery,
+        basePlan: analyzedProject.value ? currentPlan : undefined,
+      }
+    }
     projectDescription.value = result.projectBrief?.trim() || description
-    if (result.hookChecks) hookChecks.value = result.hookChecks
+    if (!projectTitle.value && result.sessionTitle) projectTitle.value = result.sessionTitle
+    if (refresh || result.hookChecks) hookChecks.value = result.hookChecks ?? []
     discovery.value = undefined
     planCatalogPaths = paths
     builderPaths.value = paths
@@ -858,14 +917,23 @@ async function inspectProject(useDefaults = false) {
       plan: result.candidate.plan, notes: result.candidate.assumptions, offline: false,
     }
     planText.value = JSON.stringify(result.candidate.plan, null, 2)
-    messages.value.push({ role: 'assistant', text: [updated ? t('Plan updated.') : t('Initial setup added to the builder.'), ...(analyzedProject.value ? result.candidate.assumptions : [])].join('\n') })
+    messages.value.push({ role: 'assistant', text: [refresh ? t('Structure refreshed.') : updated ? t('Plan updated.') : t('Initial setup added to the builder.'), ...(analyzedProject.value ? result.candidate.assumptions : [])].join('\n') })
     selectedModule.value = undefined
     screen.value = 'builder'
   } catch (cause) {
-    idea.value = submitted
+    if (!refresh) idea.value = submitted
     messages.value.push({ role: 'error', text: String(cause) })
   } finally {
     inspecting.value = false
+    if (!refresh) {
+      await nextTick()
+      const input = chatInput.value
+      const active = document.activeElement
+      if (input && screen.value === 'builder' && !promptDialog.value?.open && !instructionDialog.value?.open
+        && (!active || active === document.body || input.form?.contains(active) || active.closest('.initial-prompt'))) {
+        input.focus({ preventScroll: true })
+      }
+    }
   }
 }
 </script>
@@ -976,11 +1044,12 @@ async function inspectProject(useDefaults = false) {
       <p v-if="error" class="mt-5 text-red-700" role="alert">{{ error }}</p>
       <section v-if="project && screen === 'builder'" class="grid editor-workspace">
         <header v-if="screen === 'builder'" class="editor-toolbar">
-          <h1 class="project-path">{{ projectTitle || t("Project instructions") }}</h1>
+          <h1 class="project-path">{{ projectTitle || t("Untitled project") }}</h1>
           <div class="editor-actions">
             <button type="button" :disabled="inspecting" @click="yamlInput?.click()">{{ t("Import prelude.yaml") }}</button>
             <input ref="yamlInput" hidden type="file" accept=".yaml,.yml" @change="openYaml" />
-            <button type="button" @click="saveYaml">{{ t("Save YAML") }}</button>
+            <button type="button" @click="saveYaml">{{ t("Save prelude.yaml") }}</button>
+            <button type="button" :disabled="!canRefreshStructure" @click="inspectProject('refresh')">{{ t("Refresh structure") }}</button>
           </div>
         </header>
         <div v-if="screen === 'builder'" class="editor-layout">
@@ -995,7 +1064,7 @@ async function inspectProject(useDefaults = false) {
               </div>
             </div>
             <div class="editor-composer">
-            <textarea v-model="idea" rows="3" :aria-label="t('Project prompt')" @keydown.enter="handlePromptEnter" :placeholder="discovery ? t('Answer the question or ask AI to choose defaults…') : projectDescription ? t('Ask AI to change the plan…') : t('Describe your project…')" :disabled="inspecting" />
+            <textarea ref="chatInput" v-model="idea" rows="3" :aria-label="t('Project prompt')" @keydown.enter="handlePromptEnter" :placeholder="discovery ? t('Answer the question or ask AI to choose defaults…') : projectDescription ? t('Ask AI to change the plan…') : t('Describe your project…')" :disabled="inspecting" />
             <div class="composer-actions">
               <select v-model="chatModel" :aria-label="t('Chat model')" class="w-full min-w-0 rounded bg-zinc-100 p-2" :disabled="loadingModels || inspecting">
                 <option value="" disabled>{{ loadingModels ? t('Loading models…') : t('Select a model') }}</option>
@@ -1004,7 +1073,7 @@ async function inspectProject(useDefaults = false) {
               <button class="rounded bg-zinc-800 px-3 py-2 text-zinc-950 disabled:opacity-50"
                 :disabled="!canSendPrompt">{{ inspecting ? t('Working…') : t('Send') }}</button>
             </div>
-            <button v-if="discovery" type="button" class="discovery-defaults" :disabled="!canRequestPlan" @click="inspectProject(true)">
+            <button v-if="discovery" type="button" class="discovery-defaults" :disabled="!canRequestPlan" @click="inspectProject('defaults')">
               {{ t('Choose defaults') }}
             </button>
             </div>
@@ -1013,7 +1082,7 @@ async function inspectProject(useDefaults = false) {
           </form>
           <div class="editor-canvas-workspace">
             <div class="editor-canvas-panel" :inert="deliveryBusy">
-            <PlanBuilder :plan-text="planText" :local-skills="localSkills" :hook-checks="hookChecks" :detected-ids="detectedIds" :paths="builderPaths" :catalog-revision="catalogRevision" :selected-id="selectedModule?.id" @select-module="selectedModule = $event" @open-source="openModuleSource" @canvas-elements="hasCanvasElements = $event" />
+            <PlanBuilder :plan-text="planText" :local-skills="localSkills" :hook-checks="hookChecks" :detected-ids="detectedIds" :paths="builderPaths" :catalog-revision="catalogRevision" :selected-id="selectedModule?.id" :declared-dependency-count="declaredDependencies.length" @select-module="selectedModule = $event" @open-source="openModuleSource" @canvas-elements="hasCanvasElements = $event" />
             </div>
             <div class="build-overlay">
               <p v-if="deliveryError" class="build-status text-red-800" role="alert">{{ deliveryError }}</p>
@@ -1046,7 +1115,7 @@ async function inspectProject(useDefaults = false) {
     <dialog ref="promptDialog" class="build-guide initial-prompt" aria-labelledby="prompt-title" @click="dismissOnBackdrop">
       <form class="grid gap-3" @submit.prevent="startProject">
         <h2 id="prompt-title" class="text-xl font-semibold">{{ t('New project') }}</h2>
-        <textarea v-model="newDescription" rows="5" required autofocus
+        <textarea v-model="newDescription" rows="5" required autofocus @keydown.enter="handlePromptEnter"
           :aria-label="t('Project description')" :placeholder="t('Describe what you want to build…')" />
         <button type="submit" class="auth-button auth-button-primary justify-self-end" :disabled="!newDescription.trim()">{{ t('Continue') }}</button>
       </form>
@@ -1070,8 +1139,11 @@ async function inspectProject(useDefaults = false) {
         <ul class="list-disc pl-5"><li v-for="error in activeExport.skillErrors" :key="error">{{ error }}</li></ul>
       </details>
       <p v-if="activeExport?.files['.codex/hooks.json']" class="text-sm">
-        {{ t('Planned hooks: {checks}', { checks: hookChecks.join(', ') }) }}
-        {{ t('Launch Codex from the project root and approve the hooks in /hooks.') }}
+        {{ t('Included checks: {checks}', { checks: hookChecks.filter(hook => hook.check).map(hook => hook.title || hook.check).join(', ') }) }}
+        {{ t('Open the project in the selected agent and approve the hooks before running them.') }}
+      </p>
+      <p v-if="activeExport && hookChecks.some(hook => !hook.check || !activeExport?.files['.codex/hooks.json'])" class="text-sm">
+        {{ t('Some proposed hooks require setup in the selected agent.') }}
       </p>
       <div v-if="activeExport" class="export-editor">
         <nav class="export-tree" :aria-label="t('Export files')">

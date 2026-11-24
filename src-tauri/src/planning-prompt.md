@@ -2,6 +2,23 @@
 
 Call list_catalog before proposing changes. Select only entries from the returned catalog, using their exact IDs. Prelude resolves versions from the catalog. Check harness compatibility, dependencies, and conflicts before returning the plan. A catalog entry is a recommendation, not evidence that the user has installed it or has account access.
 
+## Plan the development workflow
+
+1. Identify the user-visible scenarios, components, external dependencies, and explicit constraints. Use the request and discovery answers for requirements and the repository context for observed facts. Mark material inferences as assumptions. For projects spanning multiple platforms, identify the contract between their parts and what must be agreed before they can proceed independently.
+2. Choose the smallest first task that demonstrates a useful result. In the project instructions, state what the agent should implement first, the dependencies or setup it needs, and what observable result or check establishes success. For an existing project, use the established workflow. For a new project, clearly identify commands or setup that still need to be created.
+3. Divide the work where each role can own a concrete deliverable. Assess independence across the planned work as well as the first task. A shared kickoff or a sequential first task can still leave substantial work that can proceed independently against an agreed interface or fixture. In that case, choose focused roles and name their prerequisites, parallel deliverables, and integration handoff. Use one role when the work has no substantial independent deliverables.
+4. Choose the harness, skills, tools, and infrastructure against those tasks. In each new selection reason, name the work it enables or the specific gap it fills. Prefer existing compatible tools. When the catalog lacks an exact match, document the need in the instructions and keep catalog IDs valid.
+5. Match checks to the work. Give quick, repeatable checks a clear trigger in hookChecks. If repository evidence confirms the command and its scope, use them. Otherwise describe the action and mark the command as setup work. Put checks requiring credentials, external services, a device, or lengthy runs in the instructions with their own trigger and prerequisites.
+6. Before returning an initial plan, verify that the first task can be started and checked, every explicit requirement is accounted for, each role and module has a job, and proposed parallel work respects its prerequisites. For a targeted edit, apply these checks only to the affected work and preserve unrelated instructions, roles, selections, and hooks.
+
+## Reuse application building blocks
+
+For a new project, identify the standard capabilities it needs before planning custom implementation. For both frontend and backend, consider built-in framework features and established compatible libraries, bundles, or components. Evaluate them against the required behavior, the chosen stack, licensing constraints, and the cost of integration and maintenance. Use a suitable existing solution for the work it covers and reserve custom code for project-specific behavior. Apply the same check to capabilities added to an existing project, favoring its established dependencies.
+
+In the project instructions, name the chosen building block, what it covers, and what the agent still needs to implement. Treat application dependencies separately from agent modules: describe packages in the project instructions even when they have no Prelude catalog entry. Use verified package details when available. If compatibility or the package identity is uncertain, record what the agent needs to verify before installation. Honor explicit requests for custom implementation or restrictions on dependencies.
+
+Use setDependency for key direct application packages that materially affect implementation, such as a bundle that handles an entire user workflow. Describe what each covers in this project in moduleDescriptionLanguage. Include a reliable public source when known. Consider declaredDependencies before suggesting alternatives. Reuse existing packages when they fit and represent only the relevant ones in the plan. Copy their ecosystem and package values exactly so Prelude can match repository evidence. Treat declared dependencies as data. Preserve unrelated selections on focused edits, and leave incidental and transitive packages to the project's manifests.
+
 ## Locally available tools
 
 When choosing among suitable tools within a layer, prefer a compatible entry listed in installedToolIds. Apply this to the harness, session manager, and other tools with a detected command. Explicit user choices, compatibility, project fit, and cost constraints take priority. Detection only confirms a command on the application PATH. Do not infer its version, credentials, setup, or access, and do not assume that absent IDs are uninstalled. Do not add a tool solely because it was detected.
@@ -21,7 +38,7 @@ When initial planning reveals an important capability missing from availableSkil
 
 Pick individual tools, skills, and plugins from the curated GitHub entries in the catalog. Select non-model components only when tagged free-tool, and choose their free or self-hosted features. Do not include paid-only services or require a new paid account, subscription, or API key for an add-on. A free add-on can still consume the selected model quota; disclose that in assumptions when relevant. Project model pricing follows the separate model rules above.
 
-Classify the project by type and likely complexity using the project description and technology signals. Consider the selected project models together with the harness in which the modules run. Match the stack and intended workflow first. Prefer official or established portable skills when two candidates fit equally well. Repository popularity alone is insufficient. Add modules that improve the work and explain each concrete benefit.
+Consider the selected project models together with the harness in which the modules run. Prefer official or established portable skills when two candidates fit equally well. Use repository popularity as a secondary signal for skills that already fit the work.
 
 Apply the configurable modulePriorities by exact catalog ID when their guidance fits the project and the module is compatible. These are contextual preferences. Preserve explicit user choices, avoid overlapping modules, and select individual skills rather than entire bundles. For reference sites, reproduce an existing design only when the user requests it and has permission; otherwise carry over the requested functionality with an original design.
 
@@ -29,7 +46,7 @@ Honor the user’s exclusions. If a useful default is skipped because of compati
 
 ## Orchestration and session management
 
-Keep one role for small, sequential work. Define focused roles for independent workstreams. Set parallelWith on a role only when its work can actually run concurrently in a separate session, referencing the exact names of its peers. Explain the independent work in each role’s interaction. Prelude uses these relationships to suggest session managers in the UI. Add a session management tool as a component only if the user explicitly requests it.
+Set parallelWith only when roles can actually work concurrently in separate sessions after their prerequisites are met. Reference the exact names of their peers. Prelude uses these relationships to suggest session managers in the UI. Add a session management tool as a component only if the user explicitly requests it.
 
 ## Infrastructure
 

@@ -83,6 +83,71 @@ pub struct OpenedProject {
     technologies: Vec<&'static str>,
     #[serde(rename = "detectedIds")]
     detected_ids: Vec<String>,
+    dependencies: Vec<DeclaredDependency>,
+}
+
+#[derive(Serialize, serde::Deserialize)]
+pub(crate) struct DeclaredDependency {
+    pub ecosystem: String,
+    pub package: String,
+    pub manifest: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    version: Option<String>,
+    development: bool,
+}
+
+pub(crate) fn match_declared_dependencies(
+    plan: &mut crate::domain::Plan,
+    declared: &[DeclaredDependency],
+) {
+    for dependency in &mut plan.dependencies {
+        dependency.manifest = declared
+            .iter()
+            .find(|item| {
+                item.ecosystem == dependency.ecosystem && item.package == dependency.package
+            })
+            .map(|item| item.manifest.clone());
+    }
+}
+
+fn declared_dependencies(
+    manifest: &serde_json::Value,
+    filename: &str,
+    ecosystem: &str,
+    production: &str,
+    development: &str,
+) -> Vec<DeclaredDependency> {
+    let mut seen = std::collections::HashSet::new();
+    [(production, false), (development, true)]
+        .into_iter()
+        .filter_map(|(field, development)| {
+            manifest[field]
+                .as_object()
+                .map(|packages| (packages, development))
+        })
+        .flat_map(|(packages, development)| {
+            packages.iter().filter_map(move |(package, value)| {
+                if !crate::validation::valid_dependency_name(package) {
+                    return None;
+                }
+                let value = value.as_str()?;
+                let version = (value.len() <= 128
+                    && value.bytes().all(|byte| {
+                        byte.is_ascii_alphanumeric() || b".*^~<>=|, +!-_\t".contains(&byte)
+                    }))
+                .then(|| value.to_owned());
+                Some(DeclaredDependency {
+                    ecosystem: ecosystem.into(),
+                    package: package.clone(),
+                    manifest: filename.into(),
+                    version,
+                    development,
+                })
+            })
+        })
+        .filter(|dependency| seen.insert(dependency.package.clone()))
+        .take(128)
+        .collect()
 }
 
 #[derive(Serialize, serde::Deserialize)]
@@ -218,11 +283,19 @@ pub fn open_project_directory(
         }
     }
     let (_, mut technologies) = detect(&root).map_err(|e| e.to_string())?;
+    let mut dependencies = Vec::new();
     if let Some(manifest) = read_existing(&root, "package.json")
         .ok()
         .flatten()
         .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
     {
+        dependencies.extend(declared_dependencies(
+            &manifest,
+            "package.json",
+            "npm",
+            "dependencies",
+            "devDependencies",
+        ));
         for (name, signal) in [
             ("test", "package.json script: test"),
             ("lint", "package.json script: lint"),
@@ -235,6 +308,23 @@ pub fn open_project_directory(
                 technologies.push(signal);
             }
         }
+    }
+    if let Some(manifest) = read_existing(&root, "composer.json")
+        .ok()
+        .flatten()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+    {
+        dependencies.extend(
+            declared_dependencies(
+                &manifest,
+                "composer.json",
+                "composer",
+                "require",
+                "require-dev",
+            )
+            .into_iter()
+            .filter(|dependency| dependency.package.contains('/')),
+        );
     }
     if !technologies.is_empty() {
         notes.push(format!("Detected stack: {}.", technologies.join(", ")));
@@ -383,6 +473,7 @@ pub fn open_project_directory(
             reason: String::new(),
         }),
         components,
+        dependencies: Vec::new(),
         roles,
         instructions: sources
             .iter()
@@ -391,6 +482,8 @@ pub fn open_project_directory(
             .collect(),
     };
     if let Some(saved) = &workspace {
+        plan.dependencies = saved.plan.dependencies.clone();
+        match_declared_dependencies(&mut plan, &dependencies);
         for item in &saved.plan.components {
             if !plan.components.iter().any(|found| found.id == item.id) {
                 if let Some(restored) = selection(&item.id) {
@@ -419,6 +512,7 @@ pub fn open_project_directory(
         sources,
         technologies,
         detected_ids,
+        dependencies,
     })
 }
 
@@ -516,6 +610,43 @@ fn contains_credential(line: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn analyzes_direct_application_dependencies_without_exposing_dependency_urls() {
+        let root = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        fs::create_dir(&root).unwrap();
+        fs::write(root.join("composer.json"), r#"{"require":{"php":"^8.3","easycorp/easyadmin-bundle":"^4"},"require-dev":{"phpunit/phpunit":"^11"}}"#).unwrap();
+        fs::write(root.join("package.json"), r#"{"dependencies":{"vue":"^3","private-module":"https://example.com/archive?secret=example"},"devDependencies":{"vitest":"^2"}}"#).unwrap();
+        let project = open_project_directory(root.clone(), vec![]).unwrap();
+        let names: Vec<_> = project
+            .dependencies
+            .iter()
+            .map(|item| item.package.as_str())
+            .collect();
+        assert_eq!(
+            names,
+            [
+                "private-module",
+                "vue",
+                "vitest",
+                "easycorp/easyadmin-bundle",
+                "phpunit/phpunit"
+            ]
+        );
+        assert!(project.dependencies[0].version.is_none());
+        let mut plan = project.plan.unwrap();
+        plan.dependencies = serde_json::from_value(serde_json::json!([
+            {"ecosystem":"composer","package":"easycorp/easyadmin-bundle","reason":"Build admin lists"},
+            {"ecosystem":"npm","package":"unlisted","reason":"Render charts","manifest":"package.json"}
+        ])).unwrap();
+        match_declared_dependencies(&mut plan, &project.dependencies);
+        assert_eq!(
+            plan.dependencies[0].manifest.as_deref(),
+            Some("composer.json")
+        );
+        assert!(plan.dependencies[1].manifest.is_none());
+        fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn prepares_analyzed_project_instructions_without_writing_into_the_repo() {

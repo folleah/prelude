@@ -6,8 +6,11 @@ currentPreludeYaml is YAML with schemaVersion: 1, plan, and assumptions. The loc
 - plan.components is an ordered array of selections with the same fields. Entries may be models, skills, tools, plugins, or infrastructure. Catalog ID identifies a component. Prelude fills version from the catalog when adding one.
 - plan.roles is an ordered array of objects with name, responsibility, interaction, reason, and optional modelId and parallelWith. parallelWith is an array of other role names that can work concurrently. Each role name is unique. modelId references a model already in plan.components.
 - plan.instructions and assumptions are arrays of strings.
+- plan.dependencies is an optional list of key direct application packages. Each entry contains ecosystem, package, reason, and optionally a public HTTPS source. Prelude manages the manifest field from repository evidence.
 
 Return one plain YAML document in block style, without Markdown fences, JSON, an entire plan, or commentary. The document has an operations list, an optional assumptions list and an optional projectBrief string. Omit assumptions unless the request changes them. If provided, assumptions replaces the existing list. Quote strings that contain YAML punctuation.
+
+When currentSessionTitle is missing or empty, include sessionTitle in the same YAML response. Write a short noun phrase in the language of the project request that names the project and its distinctive purpose. Aim for two to six words and at most 64 characters. Use plain text with no punctuation at the end, credentials, machine-local paths, or copied opening phrases from the request. Omit sessionTitle for an already named session.
 
 For an initial plan, include projectBrief as a YAML block string (use |). Turn the idea, the request, any discoveryAnswers (each pair is a question and its answer), and relevant observed project facts into a coherent standalone description. Write in the language of the project brief or request. Explain the goal, its intended users when known, the core scenarios and scope, and the requirements and constraints that matter to development. Use concise prose and Markdown lists where useful. Preserve user decisions, combine overlapping details, and omit irrelevant or unknown categories. Label material assumptions and open decisions explicitly. Do not reproduce the interview or present inferred features as requirements. Do not include credentials or machine-local paths. On later turns, treat idea as the existing brief and return projectBrief only when the project scope or requirements change or when the old brief still contains a raw interview. Tool, role and dependency changes alone do not require a new brief.
 
@@ -18,7 +21,17 @@ For an initial plan, include projectBrief as a YAML block string (use |). Turn t
 
 Allowed operations and their fields:
 
-Optional hookChecks is a separate top-level list with values test, lint, and typecheck. Prelude can export these as repository-scoped Codex Stop hooks for npm, pnpm, Yarn, or Bun scripts of the same name. On initial planning, choose only checks that are appropriate to run after each completed turn and supported by the selected package manager. Use repository evidence and the user's preferences. Leave slow, interactive, or external-service checks as manual instructions. Do not invent existing scripts or produce shell commands for hooks. On later turns omit hookChecks to preserve the current list, or supply its new complete list, including [] to remove hooks. Do not duplicate routine hooked checks in plan instructions.
+hookChecks is a separate top-level list of small, repeatable instructions, one action per hook. The title is a card label. Write a noun phrase, ideally two to four words, with no command verb or trigger. Name the check and add the component or tool only when it helps distinguish the card. For example, use "Android tests" in English or "Тесты Android" in Russian. Use these examples as formatting guidance only and derive every label from the project.
+
+In the description, use one short imperative sentence that says what to run and when. For example, in Russian: "После изменения синхронизации запусти быстрые тесты Android." Write both fields in moduleDescriptionLanguage and describe the project action without naming the agent, model, or export mechanism.
+
+When starting from an empty plan, always return hookChecks. For software projects, propose running fast tests whenever appropriate for the selected stack, even if the test command will be configured later or export cannot generate the hook. Tie each check to changes where it is useful. Use [] when no useful automatic action fits the project.
+
+Base existing command claims on the provided repository context. For a planned check without a verified command, name the action and add the required setup to the plan instructions. Describe checks needing a live service, credentials, a device, or a long run separately in the instructions, with the conditions for running them.
+
+A proposal can also carry an optional check field with the value test, lint, or typecheck. Use it at most once per value and only for a matching non-interactive project script suitable after each completed turn, with npm, pnpm, Yarn, or Bun. Prelude uses this field for executable configurations in supported export targets. Omit check for other proposals. Do not invent existing scripts, promise automatic execution, or produce shell commands. Leave slow, interactive, or external-service checks as manual instructions. Avoid duplicating executable checks in plan instructions.
+
+On later turns omit hookChecks to preserve it, or provide its complete new list. Use [] to remove hooks. If currentHookChecks contains legacy entries with missing titles or descriptions, supply the complete list with concise instructions even when the hook selection stays the same.
 
 - setHarness or addComponent: id, optional reason.
 - removeComponent: id.
@@ -26,5 +39,7 @@ Optional hookChecks is a separate top-level list with values test, lint, and typ
 - updateRole: name identifies the role. Include only fields to change from newName, responsibility, interaction, reason, modelId, and parallelWith.
 - removeRole: name.
 - addInstruction or removeInstruction: text. For removal, use the exact existing instruction.
+- setDependency: dependency with ecosystem, package, reason, and optional source. This adds or replaces the same package in the same ecosystem. Do not set manifest.
+- removeDependency: ecosystem and package from the current dependency list.
 
 Use an empty quoted string for modelId to clear its assignment and an empty list for parallelWith to clear its relationships. When no changes are needed, return operations: []. Use exact camelCase operation and field names. Write new component and harness reasons in moduleDescriptionLanguage. Preserve existing instruction text and use English for other new plan text unless the user asks for another language.

@@ -9,8 +9,12 @@ pub(crate) const PROJECT_FILE: &str = "prelude.yaml";
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProjectYaml {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub(crate) hook_checks: Vec<crate::ai_plan::HookCheck>,
+    #[serde(
+        default,
+        deserialize_with = "read_hooks",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub(crate) hook_checks: Vec<crate::ai_plan::PlannedHook>,
     schema_version: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     title: Option<String>,
@@ -20,6 +24,8 @@ pub struct ProjectYaml {
     messages: Option<Vec<ChatMessage>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     discovery: Option<Discovery>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    generation_input: Option<GenerationInput>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     delivery_mode: Option<DeliveryMode>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -58,6 +64,41 @@ struct Discovery {
     description: String,
     questions: Vec<String>,
     answers: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct GenerationInput {
+    prompt: String,
+    answers: Vec<[String; 2]>,
+    use_defaults: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    base_plan: Option<Plan>,
+}
+
+fn read_hooks<'de, D: serde::Deserializer<'de>>(
+    source: D,
+) -> Result<Vec<crate::ai_plan::PlannedHook>, D::Error> {
+    use crate::ai_plan::{HookCheck, PlannedHook};
+
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum SavedHook {
+        Described(PlannedHook),
+        Legacy(HookCheck),
+    }
+
+    Ok(Vec::<SavedHook>::deserialize(source)?
+        .into_iter()
+        .map(|hook| match hook {
+            SavedHook::Described(hook) => hook,
+            SavedHook::Legacy(check) => PlannedHook {
+                title: String::new(),
+                description: String::new(),
+                check: Some(check),
+            },
+        })
+        .collect())
 }
 
 fn check(project: ProjectYaml) -> Result<ProjectYaml, String> {
@@ -310,6 +351,17 @@ settings:
             .unwrap()
             .messages
             .is_none());
+    }
+
+    #[test]
+    fn round_trip_preserves_the_original_generation_prompt_and_answers() {
+        let yaml = format!("{SAMPLE}\ngenerationInput:\n  prompt: Build a blog\n  answers: [[Static or dynamic?, Static]]\n  useDefaults: true\n");
+        let project = decode_project_yaml(yaml).unwrap();
+        let reopened = decode_project_yaml(encode_project_yaml(project).unwrap()).unwrap();
+        let input = reopened.generation_input.unwrap();
+        assert_eq!(input.prompt, "Build a blog");
+        assert_eq!(input.answers, [["Static or dynamic?", "Static"]]);
+        assert!(input.use_defaults);
     }
 
     #[test]

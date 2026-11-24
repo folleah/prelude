@@ -1,0 +1,30 @@
+- id: blog
+  idea: Create a small static blog with Markdown articles, no accounts and no database.
+  criteria:
+    - Keep the project static and give one role the work.
+    - Name a first task that produces a rendered article and a fast check for it.
+- id: symfony-1c
+  idea: Build a Symfony web application that analyzes product data from an existing 1C API.
+  discoveryAnswers:
+    - [How will products be fetched?, Through the existing 1C API.]
+    - [Should changes be retained?, Store product history in the application's database.]
+    - [How will users work with the data?, Through a web interface with local accounts.]
+  criteria:
+    - Preserve Symfony, the existing API, product history and local accounts.
+    - Explain the data contract before parallel integration and web work.
+    - Use sample responses for fast checks and reserve the live API for a separate check.
+- id: mobile-backend
+  idea: Build an Android app and a backend for field notes. The app must work offline and sync when connectivity returns.
+  criteria:
+    - Preserve offline editing and define how mobile and backend agree on synchronization.
+    - Separate quick local checks from checks requiring a device or emulator.
+- id: desktop
+  idea: Build a small Windows desktop app to rename groups of photos. Preview changes before writing them. Work entirely offline.
+  criteria:
+    - Keep preview and local-only operation as constraints.
+    - First verify a rename preview or dry run with sample files.
+- id: game
+  idea: Build a small single-player 2D Godot puzzle game. The player pushes crates onto target tiles.
+  criteria:
+    - Make one playable level the first verifiable outcome.
+    - Tie checks to game rules or assets and keep multiplayer and backend services out of scope.

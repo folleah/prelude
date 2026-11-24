@@ -28,6 +28,7 @@ pub struct AgentExport {
     files: Files,
     omitted: Vec<String>,
     skill_errors: Vec<String>,
+    role_layout_version: u32,
 }
 
 #[tauri::command]
@@ -188,6 +189,7 @@ fn prepare_export(
             files,
             omitted,
             skill_errors: Vec::new(),
+            role_layout_version: 2,
         },
         skills,
     ))
@@ -216,8 +218,17 @@ fn add_planned_hooks(
         ("typecheck", HookCheck::Typecheck),
     ]
     .into_iter()
-    .filter_map(|(name, check)| workspace.hook_checks.contains(&check).then_some(name))
+    .filter_map(|(name, check)| {
+        workspace
+            .hook_checks
+            .iter()
+            .any(|hook| hook.check == Some(check))
+            .then_some(name)
+    })
     .collect();
+    if checks.is_empty() {
+        return Ok(());
+    }
     let config = serde_json::json!({"hooks": {"Stop": [{"hooks": [{
         "type": "command",
         "command": format!("node .codex/hooks/run-checks.cjs {manager} {}", checks.join(" ")),
@@ -380,9 +391,32 @@ pub(crate) fn agent_instructions(
             let _ = writeln!(text, "  - MCP endpoint: <{url}>");
         }
     }
+    if !plan.dependencies.is_empty() {
+        text.push_str("\n## Project dependencies\n");
+        for dependency in &plan.dependencies {
+            let _ = write!(
+                text,
+                "\n- **{}** (`{}`) — {}",
+                dependency.package, dependency.ecosystem, dependency.reason
+            );
+            if let Some(manifest) = &dependency.manifest {
+                let _ = write!(text, " Declared in `{manifest}`.");
+            }
+            if let Some(source) = dependency
+                .source
+                .as_deref()
+                .and_then(|source| public_url(source).ok())
+            {
+                let _ = write!(text, " <{source}>");
+            }
+            text.push('\n');
+        }
+    }
     if !plan.roles.is_empty() {
         text.push_str("\n## Roles\n");
-        for role in &plan.roles {
+        if plan.roles.len() > 1 {
+            write_role_delegation(&mut text, plan);
+        } else if let Some(role) = plan.roles.first() {
             let _ = writeln!(
                 text,
                 "\n### {}\n\n{}\n\n{}",
@@ -524,7 +558,7 @@ pub(crate) fn generate_build_files(
     })
 }
 
-fn public_url(value: &str) -> Result<String, String> {
+pub(crate) fn public_url(value: &str) -> Result<String, String> {
     let url =
         reqwest::Url::parse(value).map_err(|_| "The module URL must be a public HTTPS URL.")?;
     if url.scheme() != "https"
@@ -671,7 +705,10 @@ pub(crate) fn rules_path(plan: &Plan) -> Result<&'static str, String> {
 fn generate(plan: &Plan) -> Result<Files, String> {
     let rules_path = rules_path(plan)?;
     let mut rules = plan.instructions.join("\n\n");
-    if let Some(role) = plan.roles.first() {
+    if plan.roles.len() > 1 {
+        rules.push_str("\n\n## Roles\n");
+        write_role_delegation(&mut rules, plan);
+    } else if let Some(role) = plan.roles.first() {
         rules.push_str(&format!(
             "\n\n## Primary role\n\n{}\n\n{}",
             role.responsibility.trim(),
@@ -680,42 +717,105 @@ fn generate(plan: &Plan) -> Result<Files, String> {
     }
     rules.push('\n');
     let mut files = BTreeMap::from([(rules_path.into(), rules)]);
-    for (index, role) in plan.roles.iter().enumerate().skip(1) {
-        let name = format!("role-{}", index + 1);
+    for (role, (name, path)) in plan.roles.iter().zip(role_files(plan)) {
         let description = role.name.trim();
         let instructions = format!(
             "{}\n\n{}\n",
             role.responsibility.trim(),
             role.interaction.trim()
         );
-        let (path, body) = match plan.harness.id.as_str() {
-            "codex" => (
-                format!(".codex/agents/{name}.toml"),
-                format!(
-                    "name = {name:?}\ndescription = {}\ndeveloper_instructions = {}\n",
-                    toml_string(description),
-                    toml_string(&instructions)
-                ),
+        let body = match plan.harness.id.as_str() {
+            "codex" => format!(
+                "name = {name:?}\ndescription = {}\ndeveloper_instructions = {}\n",
+                toml_string(description),
+                toml_string(&instructions)
             ),
-            "claude-code" => (
-                format!(".claude/agents/{name}.md"),
-                format!(
-                    "---\nname: {name}\ndescription: {}\n---\n\n{instructions}",
-                    serde_json::to_string(description).map_err(|e| e.to_string())?
-                ),
+            "claude-code" => format!(
+                "---\nname: {name}\ndescription: {}\n---\n\n{instructions}",
+                serde_json::to_string(description).map_err(|e| e.to_string())?
             ),
-            "opencode" => (
-                format!(".opencode/agents/{name}.md"),
-                format!(
-                    "---\ndescription: {}\nmode: subagent\n---\n\n{instructions}",
-                    serde_json::to_string(description).map_err(|e| e.to_string())?
-                ),
+            "opencode" => format!(
+                "---\ndescription: {}\nmode: subagent\n---\n\n{instructions}",
+                serde_json::to_string(description).map_err(|e| e.to_string())?
             ),
             _ => unreachable!("checked harness above"),
         };
         files.insert(path, body);
     }
     Ok(files)
+}
+
+fn role_files(plan: &Plan) -> Vec<(String, String)> {
+    if plan.roles.len() < 2 {
+        return Vec::new();
+    }
+    let (directory, extension) = match plan.harness.id.as_str() {
+        "codex" => (".codex/agents", "toml"),
+        "claude-code" => (".claude/agents", "md"),
+        "opencode" => (".opencode/agents", "md"),
+        _ => return Vec::new(),
+    };
+    let mut used = std::collections::BTreeSet::new();
+    plan.roles
+        .iter()
+        .enumerate()
+        .map(|(index, role)| {
+            let slug = role
+                .name
+                .split(|c: char| !c.is_ascii_alphanumeric())
+                .filter(|word| !word.is_empty())
+                .collect::<Vec<_>>()
+                .join("-")
+                .to_ascii_lowercase();
+            let mut base = if slug.is_empty() {
+                format!("role-{}", index + 1)
+            } else {
+                slug.chars()
+                    .take(64)
+                    .collect::<String>()
+                    .trim_end_matches('-')
+                    .to_owned()
+            };
+            if matches!(base.as_str(), "aux" | "con" | "nul" | "prn")
+                || matches!(
+                    base.as_bytes(),
+                    [b'c', b'o', b'm', b'1'..=b'9'] | [b'l', b'p', b't', b'1'..=b'9']
+                )
+            {
+                base = format!("role-{base}");
+            }
+            let mut name = base.clone();
+            let mut suffix = 2;
+            while !used.insert(name.clone()) {
+                name = format!("{base}-{suffix}");
+                suffix += 1;
+            }
+            let path = format!("{directory}/{name}.{extension}");
+            (name, path)
+        })
+        .collect()
+}
+
+fn write_role_delegation(text: &mut String, plan: &Plan) {
+    text.push_str("\nDelegate tasks to the project agents listed below. Coordinate shared interfaces and combine their results in the main session.\n");
+    for (role, (name, path)) in plan.roles.iter().zip(role_files(plan)) {
+        let _ = writeln!(
+            text,
+            "\n- **{}** (`{name}`, `{path}`). {}",
+            role.name,
+            role.responsibility.trim()
+        );
+        if let Some(model) = &role.model_id {
+            let _ = writeln!(text, "  Model: `{model}`.");
+        }
+        if !role.parallel_with.is_empty() {
+            let _ = writeln!(
+                text,
+                "  Can work in parallel with {}.",
+                role.parallel_with.join(", ")
+            );
+        }
+    }
 }
 
 fn toml_string(text: &str) -> String {
@@ -778,7 +878,8 @@ mod tests {
             skill
         );
         assert!(!export.files.contains_key("SKILLS.md"));
-        assert!(export.files.contains_key(".claude/agents/role-2.md"));
+        assert!(export.files.contains_key(".claude/agents/developer.md"));
+        assert!(export.files.contains_key(".claude/agents/reviewer.md"));
         assert!(!export.files.contains_key("AGENTS.md"));
         export
             .files
@@ -873,22 +974,18 @@ mod tests {
 
     #[test]
     fn writes_rules_and_roles_to_harness_specific_paths() {
-        for (harness, version, rules, agent) in [
-            ("codex", "0.167.1", "AGENTS.md", ".codex/agents/role-2.toml"),
+        for (harness, version, rules, directory, extension) in [
+            ("codex", "0.167.1", "AGENTS.md", ".codex/agents", "toml"),
             (
                 "claude-code",
                 "2.1.322",
                 "CLAUDE.md",
-                ".claude/agents/role-2.md",
+                ".claude/agents",
+                "md",
             ),
-            (
-                "opencode",
-                "2.2.1",
-                "AGENTS.md",
-                ".opencode/agents/role-2.md",
-            ),
+            ("opencode", "2.2.1", "AGENTS.md", ".opencode/agents", "md"),
         ] {
-            let plan = serde_json::from_value(json!({
+            let mut plan: Plan = serde_json::from_value(json!({
                 "harness": {"id": harness, "version": version, "reason": "selected"},
                 "components": [],
                 "roles": [
@@ -897,11 +994,20 @@ mod tests {
                 ],
                 "instructions": ["Run tests"]
             })).unwrap();
-            let files = generate_configuration(plan, vec![]).unwrap();
-            assert_eq!(files.len(), 2);
+            let files = generate(&plan).unwrap();
+            let developer = format!("{directory}/developer.{extension}");
+            let reviewer = format!("{directory}/reviewer.{extension}");
+            assert_eq!(files.len(), 3);
             assert!(files[rules].contains("Run tests"));
-            assert!(files[agent].contains("Send findings"));
-            assert!(!files[agent].contains("required"));
+            assert!(files[rules].contains(&developer));
+            assert!(files[rules].contains(&reviewer));
+            assert!(files[&developer].contains("Implement"));
+            assert!(files[&reviewer].contains("Send findings"));
+            assert!(!files[&reviewer].contains("required"));
+            plan.roles.truncate(1);
+            let files = generate(&plan).unwrap();
+            assert_eq!(files.len(), 1);
+            assert!(files[rules].contains("Implement"));
         }
     }
 }

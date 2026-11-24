@@ -35,6 +35,66 @@
   conflicts: []
   harnessVersions: {}
 - schemaVersion: 1
+  id: context7
+  name: Context7
+  kind: mcp
+  source: https://github.com/upstash/context7
+  setupDocs: https://github.com/upstash/context7
+  purpose: Looks up library documentation and examples when a framework or API version matters
+  version: unknown
+  categories: [documentation, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: playwright-mcp
+  name: Playwright MCP
+  kind: mcp
+  source: https://github.com/microsoft/playwright-mcp
+  setupDocs: https://playwright.dev/mcp/introduction
+  purpose: Lets the agent verify user flows in a running web application through a browser
+  version: unknown
+  categories: [browser-testing, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: ast-grep
+  name: ast-grep
+  kind: tool
+  source: https://github.com/ast-grep/ast-grep
+  setupDocs: https://ast-grep.github.io/
+  purpose: Finds and rewrites syntax patterns across files during migrations and repeated refactors
+  version: unknown
+  categories: [structural-search, refactoring, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: serena
+  name: Serena
+  kind: mcp
+  source: https://github.com/oraios/serena
+  setupDocs: https://github.com/oraios/serena
+  purpose: Finds definitions and references for targeted edits in an existing codebase
+  version: unknown
+  categories: [semantic-code-navigation, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
+  id: repomix
+  name: Repomix
+  kind: tool
+  source: https://github.com/yamadashy/repomix
+  setupDocs: https://github.com/yamadashy/repomix
+  purpose: Packages a chosen set of repository files for a one-off review
+  version: unknown
+  categories: [context-preparation, free-tool]
+  requires: []
+  conflicts: []
+  harnessVersions: {}
+- schemaVersion: 1
   id: graphify
   setupDocs: https://github.com/Graphify-Labs/graphify
   purpose: Builds a project graph

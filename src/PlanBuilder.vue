@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { t } from './i18n'
 import { moduleDescription } from './module-descriptions'
-import { ListChecks, Network, PanelsTopLeft, Puzzle, Server, Terminal, UserRound, Wrench } from '@lucide/vue'
+import { ListChecks, Network, Package, PanelsTopLeft, Puzzle, Server, Terminal, UserRound, Wrench } from '@lucide/vue'
+import type { ProjectDependency } from './project-dependency'
 import { computed, ref, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import type { PlannedHook } from './planned-hook'
 
 type Selection = { id: string, version: string, reason: string }
-type HookCheck = 'test' | 'lint' | 'typecheck'
 type Role = { name: string, responsibility: string, interaction: string, reason: string, modelId?: string, parallelWith?: string[] }
-type Plan = { harness: Selection, components: Selection[], roles: Role[], instructions: string[] }
+type Plan = { harness: Selection, components: Selection[], roles: Role[], instructions: string[], dependencies?: ProjectDependency[] }
 type Entry = {
   id: string
   name: string
@@ -27,7 +28,7 @@ const emit = defineEmits<{
   canvasElements: [visible: boolean]
   selectModule: [value: { id: string, name: string, version: string, reason: string, purpose?: string, source?: string, requires?: string[], conflicts?: string[], model?: string, interaction?: string, parallelWith?: string[] } | undefined]
 }>()
-const props = defineProps<{ planText: string, paths: string[], selectedId?: string, localSkills?: string[], hookChecks: HookCheck[], detectedIds?: string[], catalogRevision: number }>()
+const props = defineProps<{ planText: string, paths: string[], selectedId?: string, localSkills?: string[], hookChecks: PlannedHook[], detectedIds?: string[], catalogRevision: number, declaredDependencyCount: number }>()
 const entries = ref<Entry[]>([])
 const installedIds = ref(new Set<string>())
 const plan = computed<Plan | undefined>(() => {
@@ -63,8 +64,8 @@ const zones = [
   { key: 'tool', label: 'Tools and services', icon: Wrench },
   { key: 'hook', label: 'Hooks', icon: ListChecks },
   { key: 'infrastructure', label: 'Infrastructure', icon: Server },
+  { key: 'dependency', label: 'Project dependencies', icon: Package },
 ]
-const hookLabels = { test: 'Run tests', lint: 'Run lint', typecheck: 'Check types' } satisfies Record<HookCheck, string>
 function category(entry?: Entry) {
   if (entry?.kind === 'tool' && entry.categories?.includes('infrastructure')) return 'infrastructure'
   if (entry?.kind === 'tool' && entry.categories?.includes('session-management')) return 'sessions'
@@ -105,7 +106,7 @@ function cards(zone: string) {
   return plan.value.components.map((item, index) => ({ item, index }))
     .filter(({ item }) => category(byId.value.get(item.id)) === zone)
 }
-watch(computed(() => Boolean(props.hookChecks.length || props.localSkills?.length || plan.value?.roles.length || zones.some(zone => cards(zone.key).length))),
+watch(computed(() => Boolean(props.hookChecks.length || props.localSkills?.length || plan.value?.roles.length || plan.value?.dependencies?.length || zones.some(zone => cards(zone.key).length))),
   visible => emit('canvasElements', visible), { immediate: true })
 
 function selectModule(item: Selection) {
@@ -122,12 +123,25 @@ function showRole(index: number, role: Role) {
   emit('selectModule', { id: 'role-' + index, name: role.name || t('New role'), version: '', reason: role.responsibility, model: role.modelId ? byId.value.get(role.modelId)?.name ?? role.modelId : undefined, interaction: role.interaction, parallelWith: role.parallelWith })
 }
 
-function showHook(check: HookCheck) {
+function showHook(hook: PlannedHook, index: number) {
   emit('selectModule', {
-    id: 'hook:' + check,
-    name: t(hookLabels[check]),
+    id: 'hook:' + index,
+    name: hook.title || hook.check || '',
     version: '',
-    reason: t('Planned by AI. Exported as a Codex Stop hook when a supported package manager is selected.'),
+    reason: hook.description,
+  })
+}
+
+function showDependency(dependency: ProjectDependency, index: number) {
+  emit('selectModule', {
+    id: 'dependency:' + index,
+    name: dependency.package,
+    version: '',
+    reason: dependency.reason,
+    source: dependency.source,
+    interaction: dependency.manifest
+      ? t('Declared in {manifest}', { manifest: dependency.manifest })
+      : t('Proposed dependency'),
   })
 }
 </script>
@@ -156,11 +170,22 @@ function showHook(check: HookCheck) {
         </article>
       </template>
       <template v-if="zone.key === 'hook'">
-        <article v-for="check in hookChecks" :key="check" class="module-card">
-          <button type="button" class="card-title" :aria-pressed="selectedId === 'hook:' + check" @click="showHook(check)">
-            <ListChecks :size="16" aria-hidden="true" />{{ t(hookLabels[check]) }}
+        <article v-for="(hook, index) in hookChecks" :key="index" class="module-card">
+          <button type="button" class="card-title" :aria-pressed="selectedId === 'hook:' + index" @click="showHook(hook, index)">
+            <ListChecks :size="16" aria-hidden="true" />{{ hook.title || hook.check }}
           </button>
         </article>
+      </template>
+      <template v-if="zone.key === 'dependency'">
+        <article v-for="(dependency, index) in plan.dependencies" :key="index" class="module-card">
+          <button type="button" class="card-title" :aria-pressed="selectedId === 'dependency:' + index" @click="showDependency(dependency, index)">
+            <Package :size="16" aria-hidden="true" />{{ dependency.package }}
+          </button>
+          <small class="installed-label">{{ t(dependency.manifest ? 'Declared in project' : 'Proposed') }}</small>
+        </article>
+        <p v-if="!plan.dependencies?.length && declaredDependencyCount" class="installed-label">
+          {{ t('Detected direct dependencies: {count}. Describe the task to identify the relevant ones.', { count: declaredDependencyCount }) }}
+        </p>
       </template>
     </div>
     <aside v-if="zone.key === 'role' && sessionHintVisible" class="session-hint" :aria-label="t('Session management suggestion')">

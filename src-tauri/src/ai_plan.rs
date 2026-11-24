@@ -31,7 +31,17 @@ pub(crate) struct PlanPatch {
     operations: Vec<PlanOperation>,
     assumptions: Option<Vec<String>>,
     pub(crate) project_brief: Option<String>,
-    pub(crate) hook_checks: Option<Vec<HookCheck>>,
+    pub(crate) session_title: Option<String>,
+    pub(crate) hook_checks: Option<Vec<PlannedHook>>,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct PlannedHook {
+    pub(crate) title: String,
+    pub(crate) description: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) check: Option<HookCheck>,
 }
 
 #[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
@@ -80,6 +90,13 @@ enum PlanOperation {
     RemoveInstruction {
         text: String,
     },
+    SetDependency {
+        dependency: crate::domain::ProjectDependency,
+    },
+    RemoveDependency {
+        ecosystem: String,
+        package: String,
+    },
 }
 
 impl PlanPatch {
@@ -125,6 +142,25 @@ fn apply_operation(
     catalog: &Catalog,
 ) -> Result<(), String> {
     match operation {
+        PlanOperation::SetDependency { mut dependency } => {
+            dependency.manifest = None;
+            if let Some(current) = plan.dependencies.iter_mut().find(|item| {
+                item.ecosystem == dependency.ecosystem && item.package == dependency.package
+            }) {
+                dependency.manifest = current.manifest.clone();
+                *current = dependency;
+            } else {
+                plan.dependencies.push(dependency);
+            }
+        }
+        PlanOperation::RemoveDependency { ecosystem, package } => {
+            let index = plan
+                .dependencies
+                .iter()
+                .position(|item| item.ecosystem == ecosystem && item.package == package)
+                .ok_or("The project dependency is not in the plan.")?;
+            plan.dependencies.remove(index);
+        }
         PlanOperation::SetHarness { id, reason } => {
             plan.harness = selected_entry(catalog, id, reason, true)?
         }

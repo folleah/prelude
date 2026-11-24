@@ -373,6 +373,13 @@ pub async fn restore_chatgpt(
     state: tauri::State<'_, ChatGptSession>,
 ) -> Result<bool, String> {
     let storage = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    restore_session(&storage, &state).await
+}
+
+pub(crate) async fn restore_session(
+    storage: &std::path::Path,
+    state: &ChatGptSession,
+) -> Result<bool, String> {
     let (generation, mut renewal) = {
         let mut session = state
             .0
@@ -381,7 +388,7 @@ pub async fn restore_chatgpt(
         if session.1.is_some() {
             return Ok(true);
         }
-        let Some(renewal) = chatgpt_storage::load(&storage)? else {
+        let Some(renewal) = chatgpt_storage::load(storage)? else {
             return Ok(false);
         };
         session.0 += 1;
@@ -427,7 +434,7 @@ pub async fn restore_chatgpt(
         if token["error"] == "invalid_grant"
             || token.pointer("/error/code").and_then(Value::as_str) == Some("invalid_grant")
         {
-            chatgpt_storage::delete(&storage)?;
+            chatgpt_storage::delete(storage)?;
             return Err("The saved ChatGPT session expired. Sign in again.".into());
         }
         return Err(token_error(status.as_u16(), Some(&token)));
@@ -437,7 +444,7 @@ pub async fn restore_chatgpt(
             .split_whitespace()
             .any(|item| item == "chatgpt.tokens.use.direct")
     }) {
-        chatgpt_storage::delete(&storage)?;
+        chatgpt_storage::delete(storage)?;
         return Err("Access to the ChatGPT subscription was revoked. Sign in again.".into());
     }
     let authorization = token_header(&token)?;
@@ -446,7 +453,7 @@ pub async fn restore_chatgpt(
         .filter(|value| !value.is_empty())
     {
         renewal.refresh_token = rotated.into();
-        chatgpt_storage::save(&storage, &renewal)?;
+        chatgpt_storage::save(storage, &renewal)?;
     }
     session.1 = Some(authorization);
     Ok(true)

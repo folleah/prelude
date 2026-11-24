@@ -1,5 +1,20 @@
 {
   "priorities": {
+    "context7": {
+      "planning": "Consider when implementation depends on documentation for unfamiliar or version-sensitive libraries. Use public library queries and an available free setup compatible with the selected harness."
+    },
+    "playwright-mcp": {
+      "planning": "Consider when the agent must exercise flows in a running web app, such as sign-in, filtering, or navigation. Use local or test environments and prefer existing browser verification where it suffices."
+    },
+    "ast-grep": {
+      "planning": "Consider for repeated syntax-aware searches and edits during API migrations or cross-file refactors in supported languages. Preview matches before applying rewrites."
+    },
+    "serena": {
+      "planning": "Consider when work in an existing codebase depends on exact symbol definitions, references, and targeted edits in supported languages. Use the project graph for architecture questions and add both only if both jobs are needed."
+    },
+    "repomix": {
+      "planning": "Consider for a one-off review that needs a portable snapshot of selected files. Restrict the snapshot to relevant files and omit credentials, local configuration, and generated artifacts."
+    },
     "humanizer": {
       "planning": "Include for documentation, public-facing copy, interface text, and release notes. Preserve technical terms, facts, code, and structured data.",
       "instructions": "Use when writing or revising public-facing copy, interface text, articles or documentation. Preserve meaning, facts and technical terms. Skip code-only changes."

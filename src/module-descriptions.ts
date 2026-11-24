@@ -1,6 +1,11 @@
 import { language } from './i18n'
 
 const russianDescriptions = new Map<string, string>([
+  ["Looks up library documentation and examples when a framework or API version matters", "Находит документацию и примеры библиотек, когда важна версия фреймворка или API"],
+  ["Lets the agent verify user flows in a running web application through a browser", "Позволяет агенту проверить пользовательские сценарии в запущенном веб-приложении через браузер"],
+  ["Finds and rewrites syntax patterns across files during migrations and repeated refactors", "Находит и меняет конструкции по синтаксису при миграциях и однотипных правках во многих файлах"],
+  ["Finds definitions and references for targeted edits in an existing codebase", "Находит определения и использования символов для точечных правок в существующем коде"],
+  ["Packages a chosen set of repository files for a one-off review", "Собирает выбранные файлы репозитория для разового анализа"],
   ["Coding agent harness", "Среда запуска агента для разработки"],
   ["Builds a project graph", "Строит граф проекта"],
   ["Guidelines for minimal code changes", "Помогает вносить небольшие изменения в код"],
